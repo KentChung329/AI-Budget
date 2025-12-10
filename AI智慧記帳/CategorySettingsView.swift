@@ -4,6 +4,8 @@
 //
 //  Created by ҡεηт ” on 2025/12/10.
 //
+// 測試 Git 功能是否正常
+
 import SwiftUI
 
 struct CategorySettingsView: View {
