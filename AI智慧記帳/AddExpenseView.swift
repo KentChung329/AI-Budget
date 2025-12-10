@@ -7,6 +7,7 @@ struct AddExpenseView: View {
     @State private var amount: String = ""
     @State private var note: String = ""
     @State private var selectedCategoryName: String = ""
+    @State private var selectedDate: Date = Date()   // 可選日期，預設今天
 
     @FocusState private var isAmountFieldFocused: Bool
 
@@ -30,6 +31,22 @@ struct AddExpenseView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 12) {
+
+                // 0. 日期選擇（預設今天，可改為前幾天）
+                HStack {
+                    Text("日期")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    DatePicker(
+                        "",
+                        selection: $selectedDate,
+                        in: ...Date(),          // 不讓選未來
+                        displayedComponents: .date
+                    )
+                    .labelsHidden()
+                }
+                .padding(.horizontal)
 
                 // 1. 金額 + 備註
                 VStack(alignment: .leading, spacing: 6) {
@@ -59,7 +76,7 @@ struct AddExpenseView: View {
                     .padding(.horizontal)
                     .padding(.top, 4)
                 }
-                .frame(maxHeight: 170) // 你指定的高度
+                .frame(maxHeight: 140)
 
                 // 3. 自動分類提示
                 Text("若未選擇分類，將依目前時間自動歸類為「\(currentAutoCategoryName)」。")
@@ -150,11 +167,16 @@ struct AddExpenseView: View {
             finalCategory = currentAutoCategoryName
         }
 
-        manager.addExpense(
+        // 用選到的日期，而不是固定今天
+        let expense = Expense(
+            id: UUID(),
+            date: selectedDate,
             amount: value,
             categoryName: finalCategory,
             note: note.isEmpty ? nil : note
         )
+        manager.expenses.append(expense)
+        manager.saveExpenses()
 
         isAmountFieldFocused = false
         dismiss()

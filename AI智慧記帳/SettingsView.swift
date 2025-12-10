@@ -5,6 +5,7 @@ struct SettingsView: View {
     @EnvironmentObject var manager: CategoryManager
 
     @State private var budgetText: String = ""
+    @State private var showDeleteTodayAlert = false
 
     @FocusState private var isBudgetFocused: Bool
 
@@ -35,6 +36,18 @@ struct SettingsView: View {
                             .environmentObject(manager)
                     }
                 }
+
+                // 刪除本日所有記帳
+                Section(header: Text("危險操作")) {
+                    Button(role: .destructive) {
+                        showDeleteTodayAlert = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "trash.fill")
+                            Text("刪除本日所有記帳")
+                        }
+                    }
+                }
             }
             .navigationTitle("設定")
             .toolbar {
@@ -62,7 +75,24 @@ struct SettingsView: View {
                     }
                 }
             }
+            .alert("確定要刪除本日所有記帳？", isPresented: $showDeleteTodayAlert) {
+                Button("取消", role: .cancel) { }
+                Button("確定刪除", role: .destructive) {
+                    deleteTodayExpenses()
+                }
+            } message: {
+                Text("此操作無法復原。")
+            }
         }
+    }
+
+    // MARK: - 刪除本日所有記帳
+    private func deleteTodayExpenses() {
+        let calendar = Calendar.current
+        manager.expenses.removeAll { expense in
+            calendar.isDateInToday(expense.date)
+        }
+        manager.saveExpenses()
     }
 }
 
@@ -133,7 +163,6 @@ struct CategoryTimeEditor: View {
         .navigationTitle(category.name)
     }
 
-    // ✅ 左邊顯示「開始 / 結束」，中間 Picker 選「x 時」「y 分」，文字跟數字對應
     private func timeRow(title: String,
                          hour: Binding<Int>,
                          minute: Binding<Int>) -> some View {
@@ -142,7 +171,7 @@ struct CategoryTimeEditor: View {
             Spacer()
 
             HStack(spacing: 4) {
-                Picker("", selection: hour) {
+                Picker("時", selection: hour) {
                     ForEach(0..<24) { h in
                         Text("\(h)").tag(h)
                     }
@@ -151,7 +180,7 @@ struct CategoryTimeEditor: View {
 
                 Text("時")
 
-                Picker("", selection: minute) {
+                Picker("分", selection: minute) {
                     ForEach(0..<60) { m in
                         Text(String(format: "%02d", m)).tag(m)
                     }
@@ -163,4 +192,3 @@ struct CategoryTimeEditor: View {
         }
     }
 }
-
