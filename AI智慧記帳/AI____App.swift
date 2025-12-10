@@ -1,12 +1,13 @@
-//___FILEHEADER___
-
 import SwiftUI
 
 @main
-struct ___PACKAGENAME:identifier___App: App {
+struct AI智慧記帳App: App {
+    @StateObject private var manager = CategoryManager()
+
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(manager)
         }
     }
 }
