@@ -1,8 +1,52 @@
-
 import Foundation
 import Combine
 import SwiftUI
 
+struct Category: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var name: String
+    var startHour: Int
+    var startMinute: Int
+    var endHour: Int
+    var endMinute: Int
+    var color: String
+
+    static let defaults: [Category] = [
+        Category(name: "早餐", startHour: 5,  startMinute: 0,  endHour: 10, endMinute: 59, color: "yellow"),
+        Category(name: "午餐", startHour: 11, startMinute: 0,  endHour: 13, endMinute: 59, color: "orange"),
+        Category(name: "晚餐", startHour: 17, startMinute: 0,  endHour: 20, endMinute: 59, color: "green"),
+        Category(name: "宵夜", startHour: 21, startMinute: 0,  endHour: 4,  endMinute: 59, color: "purple"),
+        Category(name: "飲品", startHour: 0,  startMinute: 0,  endHour: 23, endMinute: 59, color: "blue"),
+        Category(name: "購物", startHour: 0,  startMinute: 0,  endHour: 23, endMinute: 59, color: "orange"),
+        Category(name: "點心", startHour: 0,  startMinute: 0,  endHour: 23, endMinute: 59, color: "pink"),
+        Category(name: "交通", startHour: 0,  startMinute: 0,  endHour: 23, endMinute: 59, color: "blue"),
+        Category(name: "娛樂", startHour: 0,  startMinute: 0,  endHour: 23, endMinute: 59, color: "red"),
+        Category(name: "日用品", startHour: 0,  startMinute: 0,  endHour: 23, endMinute: 59, color: "green"),
+        Category(name: "禮物", startHour: 0,  startMinute: 0,  endHour: 23, endMinute: 59, color: "pink"),
+        Category(name: "洗衣服", startHour: 0,  startMinute: 0,  endHour: 23, endMinute: 59, color: "purple"),
+        Category(name: "藥物", startHour: 0,  startMinute: 0,  endHour: 23, endMinute: 59, color: "red")
+    ]
+
+    func isInTimeRange(hour: Int, minute: Int) -> Bool {
+        let currentMinutes = hour * 60 + minute
+        let startMinutes = startHour * 60 + startMinute
+        let endMinutes = endHour * 60 + endMinute
+
+        if startMinutes <= endMinutes {
+            return currentMinutes >= startMinutes && currentMinutes <= endMinutes
+        } else {
+            return currentMinutes >= startMinutes || currentMinutes <= endMinutes
+        }
+    }
+}
+
+struct Expense: Identifiable, Codable {
+    var id = UUID()
+    var date: Date
+    var amount: Int
+    var categoryName: String
+    var note: String?
+}
 
 class CategoryManager: ObservableObject {
     @Published var categories: [Category] = []
@@ -20,7 +64,6 @@ class CategoryManager: ObservableObject {
     }
 
     // MARK: - 分類儲存 / 載入
-
     func loadCategories() {
         if let data = UserDefaults.standard.data(forKey: categoriesKey),
            let decoded = try? JSONDecoder().decode([Category].self, from: data) {
@@ -38,7 +81,6 @@ class CategoryManager: ObservableObject {
     }
 
     // MARK: - 記帳儲存 / 載入
-
     func loadExpenses() {
         if let data = UserDefaults.standard.data(forKey: expensesKey),
            let decoded = try? JSONDecoder().decode([Expense].self, from: data) {
@@ -53,7 +95,6 @@ class CategoryManager: ObservableObject {
     }
 
     // MARK: - 預算
-
     func loadBudget() {
         let saved = UserDefaults.standard.integer(forKey: budgetKey)
         if saved > 0 {
@@ -65,27 +106,7 @@ class CategoryManager: ObservableObject {
         UserDefaults.standard.set(monthlyBudget, forKey: budgetKey)
     }
 
-    // MARK: - 分類 CRUD
-
-    func addCategory(_ category: Category) {
-        categories.append(category)
-        saveCategories()
-    }
-
-    func deleteCategory(_ category: Category) {
-        categories.removeAll { $0.id == category.id }
-        saveCategories()
-    }
-
-    func updateCategory(_ category: Category) {
-        if let index = categories.firstIndex(where: { $0.id == category.id }) {
-            categories[index] = category
-            saveCategories()
-        }
-    }
-
     // MARK: - 記帳 CRUD
-
     func addExpense(amount: Int, categoryName: String, note: String?) {
         let expense = Expense(date: Date(), amount: amount, categoryName: categoryName, note: note)
         expenses.append(expense)
@@ -97,16 +118,25 @@ class CategoryManager: ObservableObject {
         saveExpenses()
     }
 
-    // MARK: - 自動分類（依時間）
-
+    // MARK: - 分類相關
     func getCategoryByTime() -> Category? {
         let hour = Calendar.current.component(.hour, from: Date())
         let minute = Calendar.current.component(.minute, from: Date())
         return categories.first { $0.isInTimeRange(hour: hour, minute: minute) }
     }
 
-    // MARK: - 統計
+    /// 調整指定分類的時間區間
+    func updateCategoryTime(category: Category, startHour: Int, startMinute: Int,
+                            endHour: Int, endMinute: Int) {
+        guard let index = categories.firstIndex(where: { $0.id == category.id }) else { return }
+        categories[index].startHour = startHour
+        categories[index].startMinute = startMinute
+        categories[index].endHour = endHour
+        categories[index].endMinute = endMinute
+        saveCategories()
+    }
 
+    // MARK: - 統計
     func getMonthlySpent() -> Int {
         let calendar = Calendar.current
         let thisMonth = calendar.component(.month, from: Date())

@@ -10,7 +10,6 @@ struct AddExpenseView: View {
 
     @FocusState private var isAmountFieldFocused: Bool
 
-    // 全部分類
     private let categoryOptions: [String] = [
         "早餐", "午餐", "晚餐", "宵夜",
         "飲品", "購物", "點心",
@@ -18,10 +17,8 @@ struct AddExpenseView: View {
         "禮物", "洗衣服", "藥物"
     ]
 
-    // 一排 5 個
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 5)
 
-    // 目前時間自動分類
     private var currentAutoCategoryName: String {
         if let c = manager.getCategoryByTime() {
             return c.name
@@ -34,7 +31,7 @@ struct AddExpenseView: View {
         NavigationView {
             VStack(spacing: 12) {
 
-                // 1. 金額 + 備註顯示
+                // 1. 金額 + 備註
                 VStack(alignment: .leading, spacing: 6) {
                     Text("金額")
                         .font(.caption)
@@ -52,7 +49,7 @@ struct AddExpenseView: View {
                 }
                 .padding(.horizontal)
 
-                // 2. 分類區：直向捲動，一排 5 個，超過兩行往下捲
+                // 2. 分類（直向捲動，一排 5 個）
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: 8) {
                         ForEach(categoryOptions, id: \.self) { name in
@@ -62,7 +59,7 @@ struct AddExpenseView: View {
                     .padding(.horizontal)
                     .padding(.top, 4)
                 }
-                .frame(maxHeight: 120) // 大約兩行高度，超過就往下捲
+                .frame(maxHeight: 170) // 你指定的高度
 
                 // 3. 自動分類提示
                 Text("若未選擇分類，將依目前時間自動歸類為「\(currentAutoCategoryName)」。")
@@ -73,7 +70,7 @@ struct AddExpenseView: View {
 
                 Spacer()
 
-                // 4. 隱藏金額輸入欄，只用來叫出數字鍵盤
+                // 4. 隱藏 TextField 用來叫出數字鍵盤
                 TextField("", text: $amount)
                     .keyboardType(.numberPad)
                     .focused($isAmountFieldFocused)
@@ -84,11 +81,11 @@ struct AddExpenseView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") {
+                        isAmountFieldFocused = false
                         dismiss()
                     }
                 }
             }
-            // 鍵盤上方工具列：顯示金額 + 儲存按鈕
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     HStack {
@@ -104,15 +101,19 @@ struct AddExpenseView: View {
                 }
             }
             .onAppear {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                // 每次畫面出現都強制叫出鍵盤
+                isAmountFieldFocused = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                     isAmountFieldFocused = true
                 }
+            }
+            .onDisappear {
+                isAmountFieldFocused = false
             }
         }
     }
 
-    // MARK: - 分類方塊（5 個一排）
-
+    // MARK: - 分類按鈕
     private func categoryTile(name: String) -> some View {
         Button {
             selectedCategoryName = name
@@ -139,7 +140,6 @@ struct AddExpenseView: View {
     }
 
     // MARK: - 儲存
-
     private func saveTapped() {
         guard let value = Int(amount), value > 0 else { return }
 
@@ -155,6 +155,8 @@ struct AddExpenseView: View {
             categoryName: finalCategory,
             note: note.isEmpty ? nil : note
         )
+
+        isAmountFieldFocused = false
         dismiss()
     }
 }
