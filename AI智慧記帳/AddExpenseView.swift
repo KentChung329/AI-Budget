@@ -7,7 +7,7 @@ struct AddExpenseView: View {
     @State private var amount: String = ""
     @State private var note: String = ""
     @State private var selectedCategoryName: String = ""
-    @State private var selectedDate: Date = Date()   // 可選日期，預設今天
+    @State private var selectedDate: Date = Date()
 
     @FocusState private var isAmountFieldFocused: Bool
 
@@ -16,6 +16,23 @@ struct AddExpenseView: View {
         "飲品", "購物", "點心",
         "交通", "娛樂", "日用品",
         "禮物", "洗衣服", "藥物"
+    ]
+    
+    // 跟主畫面一樣的顏色配置
+    private let categoryColors: [String: Color] = [
+        "早餐": .orange,
+        "午餐": .blue,
+        "晚餐": .purple,
+        "宵夜": .yellow,
+        "飲品": .green,
+        "購物": .pink,
+        "點心": .red,
+        "交通": .red,
+        "娛樂": .red,
+        "日用品": .red,
+        "禮物": .red,
+        "洗衣服": .red,
+        "藥物": .red
     ]
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 5)
@@ -32,7 +49,7 @@ struct AddExpenseView: View {
         NavigationView {
             VStack(spacing: 12) {
 
-                // 0. 日期選擇（預設今天，可改為前幾天）
+                // 0. 日期選擇
                 HStack {
                     Text("日期")
                         .font(.caption)
@@ -41,7 +58,7 @@ struct AddExpenseView: View {
                     DatePicker(
                         "",
                         selection: $selectedDate,
-                        in: ...Date(),          // 不讓選未來
+                        in: ...Date(),
                         displayedComponents: .date
                     )
                     .labelsHidden()
@@ -61,12 +78,12 @@ struct AddExpenseView: View {
                         .foregroundColor(.secondary)
                         .padding(.top, 4)
 
-                    TextField("在此輸入備註（選填）", text: $note)
+                    TextField("在此輸入備註(選填)", text: $note)
                         .textFieldStyle(.roundedBorder)
                 }
                 .padding(.horizontal)
 
-                // 2. 分類（直向捲動，一排 5 個）
+                // 2. 分類(直向捲動，一排 5 個) - 加上顏色
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: 8) {
                         ForEach(categoryOptions, id: \.self) { name in
@@ -118,7 +135,6 @@ struct AddExpenseView: View {
                 }
             }
             .onAppear {
-                // 每次畫面出現都強制叫出鍵盤
                 isAmountFieldFocused = false
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                     isAmountFieldFocused = true
@@ -130,27 +146,32 @@ struct AddExpenseView: View {
         }
     }
 
-    // MARK: - 分類按鈕
+    // MARK: - 分類按鈕(加上顏色)
     private func categoryTile(name: String) -> some View {
-        Button {
+        let isSelected = selectedCategoryName == name
+        let baseColor = categoryColors[name] ?? .gray
+        
+        return Button {
             selectedCategoryName = name
         } label: {
             VStack(spacing: 4) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 10)
-                        .fill(selectedCategoryName == name ? Color.orange : Color.gray.opacity(0.15))
+                        .fill(isSelected ? baseColor : baseColor.opacity(0.2))
                         .frame(height: 40)
 
                     Text(String(name.prefix(1)))
                         .font(.headline)
-                        .foregroundColor(selectedCategoryName == name ? .white : .black)
+                        .foregroundColor(isSelected ? .white : baseColor)
+                        .fontWeight(isSelected ? .bold : .regular)
                 }
 
                 Text(name)
                     .font(.caption2)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
-                    .foregroundColor(selectedCategoryName == name ? .orange : .primary)
+                    .foregroundColor(isSelected ? baseColor : .primary)
+                    .fontWeight(isSelected ? .semibold : .regular)
             }
         }
         .buttonStyle(.plain)
@@ -167,7 +188,6 @@ struct AddExpenseView: View {
             finalCategory = currentAutoCategoryName
         }
 
-        // 用選到的日期，而不是固定今天
         let expense = Expense(
             id: UUID(),
             date: selectedDate,

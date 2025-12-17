@@ -6,6 +6,7 @@ struct ContentView: View {
 
     @State private var showingAddExpense = true
     @State private var showingSettings = false
+    @State private var showingAIQuery = false
 
     private let chartColors: [String: Color] = [
         "早餐": .orange,
@@ -39,6 +40,15 @@ struct ContentView: View {
             }
             .navigationTitle("AI 智慧記帳")
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        showingAIQuery = true
+                    } label: {
+                        Image(systemName: "brain.head.profile")
+                            .foregroundColor(.orange)
+                    }
+                }
+                
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         showingSettings = true
@@ -54,6 +64,10 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingSettings) {
             SettingsView()
+                .environmentObject(manager)
+        }
+        .sheet(isPresented: $showingAIQuery) {
+            AIQueryView()
                 .environmentObject(manager)
         }
         .onAppear {
@@ -195,7 +209,8 @@ struct ContentView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 100)    
+                .padding(.top, 100)
+                
                 // 右邊甜甜圈
                 ZStack {
                     Circle()
@@ -220,8 +235,8 @@ struct ContentView: View {
                     }
                 }
                 .frame(width: 190, height: 190)
-                .padding(.top, 20)       // 你原本的設定
-                .padding(.trailing, 90)  // 你原本的設定
+                .padding(.top, 20)
+                .padding(.trailing, 90)
 
             }
             .padding(.horizontal)
