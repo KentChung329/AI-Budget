@@ -8,15 +8,13 @@ struct SettingsView: View {
     @State private var showDeleteTodayAlert = false
     @State private var showExportSuccess = false
     @State private var exportedFileURL: URL?
-    @State private var showDatabaseAlert = false
-    @State private var databasePath = ""
 
     @FocusState private var isBudgetFocused: Bool
 
     var body: some View {
         NavigationView {
             Form {
-                // 每月預算：用鍵盤直接輸入
+                // 每月預算
                 Section(header: Text("每月預算")) {
                     HStack {
                         Text("預算金額")
@@ -33,7 +31,7 @@ struct SettingsView: View {
                         .foregroundColor(.secondary)
                 }
 
-                // 餐點時間設定入口
+                // 餐點時間設定
                 Section(header: Text("餐點時間設定")) {
                     NavigationLink("設定早餐 / 午餐 / 晚餐 / 宵夜時間") {
                         MealTimeSettingsView()
@@ -62,17 +60,6 @@ struct SettingsView: View {
                                 Text("分享已匯出的檔案")
                                     .foregroundColor(.green)
                             }
-                        }
-                    }
-                    
-                    Button {
-                        showDatabasePath()
-                    } label: {
-                        HStack {
-                            Image(systemName: "cylinder.fill")
-                                .foregroundColor(.purple)
-                            Text("顯示資料庫位置")
-                                .foregroundColor(.purple)
                         }
                     }
                 }
@@ -127,14 +114,6 @@ struct SettingsView: View {
             } message: {
                 Text("報表已匯出至「檔案」App，可使用下方「分享」按鈕傳送。")
             }
-            .alert("資料庫位置", isPresented: $showDatabaseAlert) {
-                Button("確定", role: .cancel) { }
-                Button("複製路徑") {
-                    UIPasteboard.general.string = databasePath
-                }
-            } message: {
-                Text(databasePath)
-            }
         }
     }
 
@@ -183,18 +162,6 @@ struct SettingsView: View {
         } catch {
             print("❌ 匯出失敗: \(error.localizedDescription)")
         }
-    }
-    
-    // MARK: - 顯示資料庫路徑
-    private func showDatabasePath() {
-        let fileURL = try! FileManager.default
-            .url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
-            .appendingPathComponent("BudgetTracker.sqlite")
-        
-        databasePath = fileURL.path
-        showDatabaseAlert = true
-        
-        print("📂 資料庫位置: \(fileURL.path)")
     }
 }
 

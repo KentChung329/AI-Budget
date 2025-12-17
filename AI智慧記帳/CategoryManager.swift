@@ -6,34 +6,43 @@ class CategoryManager: ObservableObject {
     @Published var categories: [Category] = []
     @Published var monthlyBudget: Int = 10000
     
-    private let db = DatabaseManager.shared
-    
     init() {
-        loadData()
+        loadExpenses()
+        loadCategories()
+        loadBudget()
     }
     
-    // MARK: - 從 SQLite 載入資料
-    private func loadData() {
-        // 載入分類
-        let loadedCategories = db.loadCategories()
-        if loadedCategories.isEmpty {
-            // 如果沒有分類，建立預設分類
-            categories = createDefaultCategories()
-            for category in categories {
-                db.saveCategory(category)
-            }
-        } else {
-            categories = loadedCategories
+    // MARK: - 儲存/讀取支出（UserDefaults）
+    func saveExpenses() {
+        if let data = try? JSONEncoder().encode(expenses) {
+            UserDefaults.standard.set(data, forKey: "expenses")
         }
-        
-        // 載入支出
-        expenses = db.loadExpenses()
-        
-        // 載入預算
-        monthlyBudget = db.loadBudget()
     }
     
-    // MARK: - 建立預設分類
+    private func loadExpenses() {
+        if let data = UserDefaults.standard.data(forKey: "expenses"),
+           let decoded = try? JSONDecoder().decode([Expense].self, from: data) {
+            expenses = decoded
+        }
+    }
+    
+    // MARK: - 儲存/讀取分類（UserDefaults）
+    private func loadCategories() {
+        if let data = UserDefaults.standard.data(forKey: "categories"),
+           let decoded = try? JSONDecoder().decode([Category].self, from: data) {
+            categories = decoded
+        } else {
+            categories = createDefaultCategories()
+            saveCategories()
+        }
+    }
+    
+    private func saveCategories() {
+        if let data = try? JSONEncoder().encode(categories) {
+            UserDefaults.standard.set(data, forKey: "categories")
+        }
+    }
+    
     private func createDefaultCategories() -> [Category] {
         return [
             Category(id: UUID(), name: "早餐", startHour: 5, startMinute: 0, endHour: 10, endMinute: 59),
@@ -43,22 +52,22 @@ class CategoryManager: ObservableObject {
         ]
     }
     
-    // MARK: - 儲存支出到 SQLite
-    func saveExpenses() {
-        for expense in expenses {
-            db.saveExpense(expense)
-        }
+    // MARK: - 儲存/讀取預算（UserDefaults）
+    func saveBudget() {
+        UserDefaults.standard.set(monthlyBudget, forKey: "monthlyBudget")
     }
     
-    // MARK: - 儲存預算到 SQLite
-    func saveBudget() {
-        db.saveBudget(monthlyBudget)
+    private func loadBudget() {
+        let saved = UserDefaults.standard.integer(forKey: "monthlyBudget")
+        if saved > 0 {
+            monthlyBudget = saved
+        }
     }
     
     // MARK: - 刪除支出
     func deleteExpense(id: UUID) {
         expenses.removeAll { $0.id == id }
-        db.deleteExpense(id: id)
+        saveExpenses()
     }
     
     // MARK: - 更新分類時間
@@ -68,8 +77,7 @@ class CategoryManager: ObservableObject {
             categories[index].startMinute = startMinute
             categories[index].endHour = endHour
             categories[index].endMinute = endMinute
-            
-            db.saveCategory(categories[index])
+            saveCategories()
         }
     }
     
