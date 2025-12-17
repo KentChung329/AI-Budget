@@ -277,7 +277,7 @@ struct ContentView: View {
                             Button(role: .destructive) {
                                 deleteSingle(expense)
                             } label: {
-                                Label("刪除", systemImage: "trash")
+                                Image(systemName: "trash")
                             }
                         }
                         .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
@@ -326,10 +326,7 @@ struct ContentView: View {
 
     // MARK: - 刪除單筆
     private func deleteSingle(_ expense: Expense) {
-        if let index = manager.expenses.firstIndex(where: { $0.id == expense.id }) {
-            manager.expenses.remove(at: index)
-            manager.saveExpenses()
-        }
+        manager.deleteExpense(id: expense.id)
     }
 
     // MARK: - 底部大＋按鈕

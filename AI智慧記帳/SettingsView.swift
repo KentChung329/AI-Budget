@@ -47,7 +47,7 @@ struct SettingsView: View {
                         HStack {
                             Image(systemName: "square.and.arrow.up")
                                 .foregroundColor(.blue)
-                            Text("匯出月報表 (CSV)")
+                            Text("匯出報表 (CSV)")
                                 .foregroundColor(.blue)
                         }
                     }
@@ -120,16 +120,14 @@ struct SettingsView: View {
 
     // MARK: - 刪除本日所有記帳
     private func deleteTodayExpenses() {
-        let calendar = Calendar.current
         manager.expenses.removeAll { expense in
-            calendar.isDateInToday(expense.date)
+            Calendar.current.isDateInToday(expense.date)
         }
         manager.saveExpenses()
     }
     
     // MARK: - 匯出 CSV 報表
     private func exportToCSV() {
-        let calendar = Calendar.current
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm"
         
