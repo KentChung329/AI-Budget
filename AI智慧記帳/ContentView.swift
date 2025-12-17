@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var manager: CategoryManager
+    @EnvironmentObject var networkMonitor: NetworkMonitor
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var showingAddExpense = true
@@ -18,66 +19,74 @@ struct ContentView: View {
     ]
 
     var body: some View {
-        NavigationView {
-            ZStack(alignment: .bottom) {
-                List {
-                    Section {
-                        summaryCard
-                            .listRowInsets(EdgeInsets())
-                            .listRowBackground(Color.clear)
+        ZStack(alignment: .bottom) {
+            Color(.systemGroupedBackground)
+                .edgesIgnoringSafeArea(.all)
+            
+            NavigationView {
+                ZStack(alignment: .bottom) {
+                    List {
+                        Section {
+                            summaryCard
+                                .listRowInsets(EdgeInsets())
+                                .listRowBackground(Color.clear)
 
-                        spendingCircle
-                            .listRowInsets(EdgeInsets())
-                            .listRowBackground(Color.clear)
+                            spendingCircle
+                                .listRowInsets(EdgeInsets())
+                                .listRowBackground(Color.clear)
+                        }
+
+                        expenseSection
                     }
+                    .listStyle(.plain)
+                    .padding(.bottom, 30)
 
-                    expenseSection
+                    addButton
                 }
-                .listStyle(.plain)
-                .background(Color(.systemGroupedBackground).ignoresSafeArea())
-
-                addButton
+                .navigationTitle("AI 智慧記帳")
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button {
+                            showingAIQuery = true
+                        } label: {
+                            Image(systemName: "brain.head.profile")
+                                .foregroundColor(.orange)
+                        }
+                    }
+                    
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            showingSettings = true
+                        } label: {
+                            Image(systemName: "gearshape.fill")
+                        }
+                    }
+                }
             }
-            .navigationTitle("AI 智慧記帳")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        showingAIQuery = true
-                    } label: {
-                        Image(systemName: "brain.head.profile")
-                            .foregroundColor(.orange)
-                    }
-                }
-                
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showingSettings = true
-                    } label: {
-                        Image(systemName: "gearshape.fill")
-                    }
-                }
+            .sheet(isPresented: $showingAddExpense) {
+                AddExpenseView()
+                    .environmentObject(manager)
             }
-        }
-        .sheet(isPresented: $showingAddExpense) {
-            AddExpenseView()
-                .environmentObject(manager)
-        }
-        .sheet(isPresented: $showingSettings) {
-            SettingsView()
-                .environmentObject(manager)
-        }
-        .sheet(isPresented: $showingAIQuery) {
-            AIQueryView()
-                .environmentObject(manager)
-        }
-        .onAppear {
-            showingAddExpense = true
-        }
-        .onChange(of: scenePhase) {
-            if scenePhase == .active {
+            .sheet(isPresented: $showingSettings) {
+                SettingsView()
+                    .environmentObject(manager)
+            }
+            .sheet(isPresented: $showingAIQuery) {
+                AIQueryView()
+                    .environmentObject(manager)
+            }
+            .onAppear {
                 showingAddExpense = true
             }
+            .onChange(of: scenePhase) {
+                if scenePhase == .active {
+                    showingAddExpense = true
+                }
+            }
+            
+            NetworkStatusBar()
         }
+        .edgesIgnoringSafeArea(.bottom)
     }
 
     // MARK: - 上方摘要卡片
@@ -253,16 +262,25 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    // MARK: - 支出列表
+    // MARK: - 支出列表（只顯示本月）
     private var expenseSection: some View {
-        let sorted = manager.expenses.sorted(by: { $0.date > $1.date })
+        let calendar = Calendar.current
+        let now = Date()
+        let nowComp = calendar.dateComponents([.year, .month], from: now)
+        
+        let currentMonthExpenses = manager.expenses.filter { expense in
+            let expenseComp = calendar.dateComponents([.year, .month], from: expense.date)
+            return expenseComp.year == nowComp.year && expenseComp.month == nowComp.month
+        }
+        
+        let sorted = currentMonthExpenses.sorted(by: { $0.date > $1.date })
         let grouped = Dictionary(grouping: sorted) { expense in
-            Calendar.current.startOfDay(for: expense.date)
+            calendar.startOfDay(for: expense.date)
         }
         let sortedKeys = grouped.keys.sorted(by: >)
 
         return ForEach(sortedKeys, id: \.self) { date in
-            let comps = Calendar.current.dateComponents([.year, .month, .day], from: date)
+            let comps = calendar.dateComponents([.year, .month, .day], from: date)
             let y = comps.year ?? 0
             let m = comps.month ?? 0
             let d = comps.day ?? 0
@@ -345,6 +363,29 @@ struct ContentView: View {
             }
             .shadow(color: Color.black.opacity(0.25), radius: 8, x: 0, y: 4)
         }
-        .padding(.bottom, 24)
+        .padding(.bottom, 64)
+    }
+}
+
+// MARK: - 網路狀態列
+struct NetworkStatusBar: View {
+    @EnvironmentObject var networkMonitor: NetworkMonitor
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Image(systemName: networkMonitor.isConnected ? "wifi" : "wifi.slash")
+                    .foregroundColor(networkMonitor.isConnected ? .green : .red)
+                    .font(.caption2)
+                
+                Text(networkMonitor.isConnected ? "已連上網際網路" : "無網際網路")
+                    .font(.caption2)
+                    .foregroundColor(networkMonitor.isConnected ? .green : .red)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(networkMonitor.isConnected ? Color.green.opacity(0.15) : Color.red.opacity(0.15))
+        }
+        .background(networkMonitor.isConnected ? Color.green.opacity(0.15) : Color.red.opacity(0.15))
     }
 }

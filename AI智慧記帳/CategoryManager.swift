@@ -37,7 +37,7 @@ class CategoryManager: ObservableObject {
         }
     }
     
-    private func saveCategories() {
+    func saveCategories() {
         if let data = try? JSONEncoder().encode(categories) {
             UserDefaults.standard.set(data, forKey: "categories")
         }
@@ -70,9 +70,9 @@ class CategoryManager: ObservableObject {
         saveExpenses()
     }
     
-    // MARK: - 更新分類時間
-    func updateCategoryTime(category: Category, startHour: Int, startMinute: Int, endHour: Int, endMinute: Int) {
-        if let index = categories.firstIndex(where: { $0.id == category.id }) {
+    // MARK: - 更新分類時間（修正版）
+    func updateCategoryTime(categoryName: String, startHour: Int, startMinute: Int, endHour: Int, endMinute: Int) {
+        if let index = categories.firstIndex(where: { $0.name == categoryName }) {
             categories[index].startHour = startHour
             categories[index].startMinute = startMinute
             categories[index].endHour = endHour
@@ -126,5 +126,38 @@ class CategoryManager: ObservableObject {
             let eComp = calendar.dateComponents([.year, .month], from: $0.date)
             return eComp.year == comp.year && eComp.month == comp.month
         }.reduce(0) { $0 + $1.amount }
+    }
+    
+    // 取得某月總支出（如果有記錄）
+    func getTotalForMonth(yearMonth: String) -> Int? {
+        let filtered = expenses.filter { expense in
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy/MM"
+            return formatter.string(from: expense.date) == yearMonth
+        }
+        
+        if filtered.isEmpty {
+            return nil
+        }
+        
+        return filtered.reduce(0) { $0 + $1.amount }
+    }
+
+    // 取得某月各分類統計
+    func getCategoryStatsForMonth(yearMonth: String) -> [(category: String, amount: Int)] {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy/MM"
+        
+        let filtered = expenses.filter { expense in
+            formatter.string(from: expense.date) == yearMonth
+        }
+        
+        if filtered.isEmpty {
+            return []
+        }
+        
+        let grouped = Dictionary(grouping: filtered) { $0.categoryName }
+        return grouped.map { (category: $0.key, amount: $0.value.reduce(0) { $0 + $1.amount }) }
+            .sorted { $0.category < $1.category }
     }
 }

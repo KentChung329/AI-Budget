@@ -14,7 +14,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             Form {
-                // 每月預算
+                // 每月預算：用鍵盤直接輸入
                 Section(header: Text("每月預算")) {
                     HStack {
                         Text("預算金額")
@@ -31,7 +31,7 @@ struct SettingsView: View {
                         .foregroundColor(.secondary)
                 }
 
-                // 餐點時間設定
+                // 餐點時間設定入口
                 Section(header: Text("餐點時間設定")) {
                     NavigationLink("設定早餐 / 午餐 / 晚餐 / 宵夜時間") {
                         MealTimeSettingsView()
@@ -39,7 +39,15 @@ struct SettingsView: View {
                     }
                 }
 
-                // 資料管理
+                // 歷史記帳查詢
+                Section(header: Text("歷史記帳")) {
+                    NavigationLink("查詢歷史月份記帳") {
+                        HistoryView()
+                            .environmentObject(manager)
+                    }
+                }
+
+                // 匯出報表
                 Section(header: Text("資料管理")) {
                     Button {
                         exportToCSV()
@@ -75,6 +83,14 @@ struct SettingsView: View {
                         }
                     }
                 }
+                
+                // 作者資訊
+                Section {
+                    Text("This app was created by 11鐘茝翔 51張博鈞")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
             }
             .navigationTitle("設定")
             .toolbar {
@@ -84,6 +100,7 @@ struct SettingsView: View {
                     }
                 }
             }
+            // 鍵盤上方工具列：預算顯示＋儲存鈕
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     HStack {
@@ -119,8 +136,9 @@ struct SettingsView: View {
 
     // MARK: - 刪除本日所有記帳
     private func deleteTodayExpenses() {
+        let calendar = Calendar.current
         manager.expenses.removeAll { expense in
-            Calendar.current.isDateInToday(expense.date)
+            calendar.isDateInToday(expense.date)
         }
         manager.saveExpenses()
     }
@@ -130,10 +148,13 @@ struct SettingsView: View {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm"
         
+        // CSV 標題列
         var csvText = "日期,時間,分類,金額,備註\n"
         
+        // 依日期排序
         let sortedExpenses = manager.expenses.sorted { $0.date > $1.date }
         
+        // 逐筆加入資料
         for expense in sortedExpenses {
             let dateString = dateFormatter.string(from: expense.date)
             let components = dateString.components(separatedBy: " ")
@@ -143,14 +164,17 @@ struct SettingsView: View {
             let amount = "\(expense.amount)"
             let note = expense.note ?? ""
             
+            // 處理備註中的逗號和換行（避免破壞 CSV 格式）
             let cleanNote = note.replacingOccurrences(of: ",", with: "，")
                                .replacingOccurrences(of: "\n", with: " ")
             
             csvText += "\(date),\(time),\(category),\(amount),\(cleanNote)\n"
         }
         
+        // 產生檔案名稱
         let fileName = "記帳報表_\(dateFormatter.string(from: Date()).replacingOccurrences(of: " ", with: "_").replacingOccurrences(of: ":", with: "-")).csv"
         
+        // 儲存到暫存目錄
         let tempDirectory = FileManager.default.temporaryDirectory
         let fileURL = tempDirectory.appendingPathComponent(fileName)
         
@@ -161,103 +185,6 @@ struct SettingsView: View {
             print("✅ CSV 已匯出至: \(fileURL.path)")
         } catch {
             print("❌ 匯出失敗: \(error.localizedDescription)")
-        }
-    }
-}
-
-// 早餐 / 午餐 / 晚餐 / 宵夜 列表
-struct MealTimeSettingsView: View {
-    @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var manager: CategoryManager
-
-    private var mealCategories: [Category] {
-        manager.categories.filter { ["早餐", "午餐", "晚餐", "宵夜"].contains($0.name) }
-    }
-
-    var body: some View {
-        List {
-            ForEach(mealCategories, id: \.id) { category in
-                NavigationLink(category.name) {
-                    CategoryTimeEditor(category: category)
-                        .environmentObject(manager)
-                }
-            }
-        }
-        .navigationTitle("餐點時間")
-    }
-}
-
-// 單一分類時間編輯
-struct CategoryTimeEditor: View {
-    @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var manager: CategoryManager
-
-    let category: Category
-
-    @State private var startHour: Int
-    @State private var startMinute: Int
-    @State private var endHour: Int
-    @State private var endMinute: Int
-
-    init(category: Category) {
-        self.category = category
-        _startHour = State(initialValue: category.startHour)
-        _startMinute = State(initialValue: category.startMinute)
-        _endHour = State(initialValue: category.endHour)
-        _endMinute = State(initialValue: category.endMinute)
-    }
-
-    var body: some View {
-        Form {
-            Section(header: Text("開始時間")) {
-                timeRow(title: "開始", hour: $startHour, minute: $startMinute)
-            }
-            Section(header: Text("結束時間")) {
-                timeRow(title: "結束", hour: $endHour, minute: $endMinute)
-            }
-
-            Section {
-                Button("儲存") {
-                    manager.updateCategoryTime(
-                        category: category,
-                        startHour: startHour,
-                        startMinute: startMinute,
-                        endHour: endHour,
-                        endMinute: endMinute
-                    )
-                    dismiss()
-                }
-            }
-        }
-        .navigationTitle(category.name)
-    }
-
-    private func timeRow(title: String,
-                         hour: Binding<Int>,
-                         minute: Binding<Int>) -> some View {
-        HStack(spacing: 12) {
-            Text(title)
-            Spacer()
-
-            HStack(spacing: 4) {
-                Picker("時", selection: hour) {
-                    ForEach(0..<24) { h in
-                        Text("\(h)").tag(h)
-                    }
-                }
-                .frame(width: 70)
-
-                Text("時")
-
-                Picker("分", selection: minute) {
-                    ForEach(0..<60) { m in
-                        Text(String(format: "%02d", m)).tag(m)
-                    }
-                }
-                .frame(width: 80)
-
-                Text("分")
-            }
         }
     }
 }
