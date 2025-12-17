@@ -8,6 +8,8 @@ struct SettingsView: View {
     @State private var showDeleteTodayAlert = false
     @State private var showExportSuccess = false
     @State private var exportedFileURL: URL?
+    @State private var showDatabaseAlert = false
+    @State private var databasePath = ""
 
     @FocusState private var isBudgetFocused: Bool
 
@@ -39,7 +41,7 @@ struct SettingsView: View {
                     }
                 }
 
-                // 匯出報表
+                // 資料管理
                 Section(header: Text("資料管理")) {
                     Button {
                         exportToCSV()
@@ -60,6 +62,17 @@ struct SettingsView: View {
                                 Text("分享已匯出的檔案")
                                     .foregroundColor(.green)
                             }
+                        }
+                    }
+                    
+                    Button {
+                        showDatabasePath()
+                    } label: {
+                        HStack {
+                            Image(systemName: "cylinder.fill")
+                                .foregroundColor(.purple)
+                            Text("顯示資料庫位置")
+                                .foregroundColor(.purple)
                         }
                     }
                 }
@@ -84,7 +97,6 @@ struct SettingsView: View {
                     }
                 }
             }
-            // 鍵盤上方工具列：預算顯示＋儲存鈕
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     HStack {
@@ -115,6 +127,14 @@ struct SettingsView: View {
             } message: {
                 Text("報表已匯出至「檔案」App，可使用下方「分享」按鈕傳送。")
             }
+            .alert("資料庫位置", isPresented: $showDatabaseAlert) {
+                Button("確定", role: .cancel) { }
+                Button("複製路徑") {
+                    UIPasteboard.general.string = databasePath
+                }
+            } message: {
+                Text(databasePath)
+            }
         }
     }
 
@@ -131,13 +151,10 @@ struct SettingsView: View {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm"
         
-        // CSV 標題列
         var csvText = "日期,時間,分類,金額,備註\n"
         
-        // 依日期排序
         let sortedExpenses = manager.expenses.sorted { $0.date > $1.date }
         
-        // 逐筆加入資料
         for expense in sortedExpenses {
             let dateString = dateFormatter.string(from: expense.date)
             let components = dateString.components(separatedBy: " ")
@@ -147,17 +164,14 @@ struct SettingsView: View {
             let amount = "\(expense.amount)"
             let note = expense.note ?? ""
             
-            // 處理備註中的逗號和換行（避免破壞 CSV 格式）
             let cleanNote = note.replacingOccurrences(of: ",", with: "，")
                                .replacingOccurrences(of: "\n", with: " ")
             
             csvText += "\(date),\(time),\(category),\(amount),\(cleanNote)\n"
         }
         
-        // 產生檔案名稱
         let fileName = "記帳報表_\(dateFormatter.string(from: Date()).replacingOccurrences(of: " ", with: "_").replacingOccurrences(of: ":", with: "-")).csv"
         
-        // 儲存到暫存目錄
         let tempDirectory = FileManager.default.temporaryDirectory
         let fileURL = tempDirectory.appendingPathComponent(fileName)
         
@@ -169,6 +183,18 @@ struct SettingsView: View {
         } catch {
             print("❌ 匯出失敗: \(error.localizedDescription)")
         }
+    }
+    
+    // MARK: - 顯示資料庫路徑
+    private func showDatabasePath() {
+        let fileURL = try! FileManager.default
+            .url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: false)
+            .appendingPathComponent("BudgetTracker.sqlite")
+        
+        databasePath = fileURL.path
+        showDatabaseAlert = true
+        
+        print("📂 資料庫位置: \(fileURL.path)")
     }
 }
 
